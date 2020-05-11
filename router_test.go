@@ -14,11 +14,11 @@ type Cont struct {
 }
 
 func TestRootRouter(t *testing.T) {
-	root := RootRouter(Cont{"laughing out loud"})
+	root := New(Cont{"laughing out loud"})
 	root.Fail = "lol fail"
 
 	// View function not set.
-	rec, req, err := request("GET", "localhost:8080", nil)
+	rec, req, err := request(http.MethodGet, "/", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestRootRouter(t *testing.T) {
 		fmt.Fprint(w, ctx.(Cont).msg)
 	}
 
-	rec, req, err = request("GET", "localhost:8080", nil)
+	rec, req, err = request(http.MethodGet, "/", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}

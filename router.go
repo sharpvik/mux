@@ -27,26 +27,26 @@ type Router struct {
 	Fail string
 
 	// routes is a slice of sub-routers.
-	routes []Router
+	routes []*Router
 
 	// filters is a slice of filters that are used to check whether this Router
 	// instance should be used for the request at hand.
-	filters []Filter
+	filters *Filters
 }
 
 // DefaultFailMessage is just a string with some dummy failure message.
 const DefaultFailMessage = "Handler node did not have a view assigned to it."
 
-// RootRouter is a constructor used to create the root of a routing tree. Root
-// doesn't need any filters as it is invoked automatically by the server anyway.
+// New is a constructor used to create the root of a routing tree. Root doesn't
+// need any filters as it is invoked automatically by the server anyway.
 // The routes will be added later, using Router's methods.
-func RootRouter(ctx Context) *Router {
+func New(ctx Context) *Router {
 	return &Router{
 		ctx,
 		nil,
 		DefaultFailMessage,
 		nil,
-		nil,
+		NewFilters(),
 	}
 }
 
@@ -54,7 +54,7 @@ func RootRouter(ctx Context) *Router {
 // http.Handler interface. It is invoked automatically by http.Server if you set
 // its Handler to the Router in question.
 func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if sub, match := rtr.match(r); match {
+	if sub, match := rtr.Match(r); match {
 		sub.ServeHTTP(w, r)
 	} else if rtr.View != nil {
 		rtr.View(w, r, rtr.Context)
@@ -64,11 +64,40 @@ func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// match method must go through all registered routes one by one and check if
+// Subrouter method returns pointer to a new sub-router instance that inherits
+// context from its parents.
+func (rtr *Router) Subrouter() *Router {
+	// Create new Router with the same Context.
+	sub := New(rtr.Context)
+
+	// Add it to parent's routes.
+	rtr.routes = append(rtr.routes, sub)
+
+	return sub
+}
+
+// Methods returns pointer to the same rtr instance while altering its filters.
+func (rtr *Router) Methods(methods ...string) *Router {
+	rtr.filters.Methods = NewMethodsFilter(methods...)
+	return rtr
+}
+
+// Path returns pointer to the same rtr instance while altering its filters.
+func (rtr *Router) Path(uri string) *Router {
+	rtr.filters.Path = NewPathFilter(uri)
+	return rtr
+}
+
+// Match method must go through all registered routes one by one and check if
 // their filters match the request. It returns the first sub-router where
 // filters matched and a boolean value indicating that there was a match.
-// If there was no match, it returns itself as the sub-router while setting
+// If there was no match, it returns nil as the sub-router while setting the
 // second value to false.
-func (rtr *Router) match(r *http.Request) (sub *Router, match bool) {
-	return rtr, false
+func (rtr *Router) Match(r *http.Request) (sub *Router, match bool) {
+	for _, route := range rtr.routes {
+		if route.filters.Match(r) {
+			return route, true
+		}
+	}
+	return nil, false
 }

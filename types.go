@@ -11,9 +11,3 @@ type Context interface{}
 // parameter it expects, represents context you wish to expose to the View. It
 // is an empty interface in order to allow you to create your own context type.
 type View func(http.ResponseWriter, *http.Request, Context)
-
-// Filter is an interface type that represents essential functionality of a
-// filter.
-type Filter interface {
-	Match(r *http.Request) bool
-}
