@@ -11,8 +11,8 @@ requests by checking their signatures against different routes with preset
 filters.
 
 There already exist a few packages that provide this functionality. However,
-there is a catch: those packages are written as though the only thing your
-handler function are going to be working with are http.ResponseWriter and
+there is a catch: those packages are written as though the only things your
+handler functions are going to be working with are http.ResponseWriter and
 http.Request sent by the user. In reality, you may wish to query a database
 and/or log some data through log.Logger. Of course, there are ways to allow a
 function to acces those interfaces via a global variable or something like that,
