@@ -1,8 +1,11 @@
 package mux
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
+	"strings"
 )
 
 // Filter is an interface type that represents essential functionality of a
@@ -102,17 +105,51 @@ func (fil *MethodsFilter) Match(r *http.Request) bool {
 type PathFilter struct {
 	// Path is a string that is used to decide whether given request matches
 	// the URLFilter. It always begins with a /forward-slash.
-	Path string
+	Path   string
+	Regexp *regexp.Regexp
 }
 
-// NewPathFilter returns pointer to a newly created PathFilter.
-func NewPathFilter(url string) *PathFilter {
-	return &PathFilter{url}
+// These are all supported Path variable types.
+const (
+	Int = iota
+	Str
+)
+
+// NewPathFilter returns pointer to a newly created PathFilter. It also ensures
+// that the first character in the uri is a forward-slash -- if it isn't there,
+// it will be inserted.
+func NewPathFilter(path string) *PathFilter {
+	if []byte(path)[0] != '/' {
+		path = "/" + path
+	}
+	split := strings.Split(path, "/")[1:]
+	var exp string
+
+	for _, e := range split {
+		if isVar(e) {
+			_, typ := varData(e)
+			sub := "/"
+			switch typ {
+			case Int:
+				sub = sub + `(-?[1-9]\d*|0)`
+			case Str:
+				sub = sub + `[a-zA-Z]+`
+			}
+			exp = exp + sub
+		} else {
+			exp = exp + "/" + e
+		}
+	}
+	regex, err := regexp.Compile(exp)
+	if err != nil {
+		panic(fmt.Sprintf("can't compile regex %s: %v", exp, err))
+	}
+	return &PathFilter{path, regex}
 }
 
 // Match method returns boolean value that tells you whether given request
 // passed the filter. Also, *PathFilter implements the Filter interface since
 // it has this method.
 func (fil *PathFilter) Match(r *http.Request) bool {
-	return r.URL.Path == fil.Path
+	return fil.Regexp.MatchString(r.URL.Path)
 }

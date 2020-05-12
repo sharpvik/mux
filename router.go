@@ -3,6 +3,8 @@ package mux
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // Router represents the node of a routing tree.
@@ -29,7 +31,7 @@ type Router struct {
 	// routes is a slice of sub-routers.
 	routes []*Router
 
-	// filters is a slice of filters that are used to check whether this Router
+	// filters is a set of filters that are used to check whether this Router
 	// instance should be used for the request at hand.
 	filters *Filters
 }
@@ -83,8 +85,8 @@ func (rtr *Router) Methods(methods ...string) *Router {
 }
 
 // Path returns pointer to the same rtr instance while altering its filters.
-func (rtr *Router) Path(uri string) *Router {
-	rtr.filters.Path = NewPathFilter(uri)
+func (rtr *Router) Path(path string) *Router {
+	rtr.filters.Path = NewPathFilter(path)
 	return rtr
 }
 
@@ -100,4 +102,49 @@ func (rtr *Router) Match(r *http.Request) (sub *Router, match bool) {
 		}
 	}
 	return nil, false
+}
+
+// Vars method parses variables from request using the PathFilter.Path.
+func (rtr *Router) Vars(r *http.Request) map[string]interface{} {
+	empty := make(map[string]interface{})
+	vars := make(map[string]interface{})
+
+	path := rtr.filters.Path.Path
+
+	// Slicing the first element away because it is always going to be an empty
+	// string since the first character is always a slash.
+	fsplit := strings.Split(path, "/")[1:]
+	rsplit := strings.Split(r.URL.Path, "/")[1:]
+
+	if len(fsplit) != len(rsplit) {
+		return empty
+	}
+
+	// Linear pattern matching. The pat here is a field from the filter path,
+	// exp is a request path field we want to match towards. Both are strings.
+	// For example, pat = "{n:int}"; exp = "42".
+	for i, pat := range fsplit {
+		exp := rsplit[i]
+
+		if isVar(pat) {
+			name, typ := varData(pat)
+
+			switch typ {
+			case Int:
+				val, err := strconv.Atoi(exp)
+				if err != nil {
+					return empty
+				}
+				vars[name] = val
+
+			case Str:
+				val := exp
+				vars[name] = val
+			}
+		} else if pat != exp {
+			return empty
+		}
+	}
+
+	return vars
 }

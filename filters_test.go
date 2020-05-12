@@ -1,84 +1,85 @@
 package mux
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"testing"
 )
 
 func TestMethodsFilter(t *testing.T) {
-	root := New(Cont{"laughing out loud"})
+	fil := NewMethodsFilter(http.MethodConnect, http.MethodGet)
 
-	sub := root.Subrouter().Methods(http.MethodGet, http.MethodDelete)
-	sub.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		fmt.Fprintf(w, "Method: '%s'", r.Method)
-	}
-
-	rec, req, err := request(http.MethodGet, "/", nil)
+	req, err := http.NewRequest(http.MethodGet, "/lol", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
 
-	err = result(
-		root, rec, req,
-		func(res *http.Response) error {
-			if res.StatusCode != http.StatusOK {
-				return fmt.Errorf(
-					"status in response: '%v'; expected '200 OK'",
-					res.Status,
-				)
-			}
-
-			if body, _ := ioutil.ReadAll(res.Body); string(body) != "Method: 'GET'" {
-				return fmt.Errorf(
-					"response body: %s; expected: `Method: 'GET'`",
-					body,
-				)
-			}
-
-			return nil
-		},
-	)
+	req, err = http.NewRequest(http.MethodConnect, "/lol", nil)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+
+	req, err = http.NewRequest(http.MethodDelete, "/lol", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
 	}
 }
 
 func TestPathFilter(t *testing.T) {
-	root := New(Cont{"laughing out loud"})
+	fil := NewPathFilter("/{i:int}")
 
-	sub := root.Subrouter().Path("/lol")
-	sub.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		fmt.Fprintf(w, "lol")
-	}
-
-	rec, req, err := request(http.MethodGet, "/lol", nil)
+	req, err := http.NewRequest(http.MethodGet, "/32", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}
-
-	err = result(
-		root, rec, req,
-		func(res *http.Response) error {
-			if res.StatusCode != http.StatusOK {
-				return fmt.Errorf(
-					"status in response: '%v'; expected '200 OK'",
-					res.Status,
-				)
-			}
-
-			if body, _ := ioutil.ReadAll(res.Body); string(body) != "lol" {
-				return fmt.Errorf(
-					"response body: %s; expected: 'lol'",
-					body,
-				)
-			}
-
-			return nil
-		},
-	)
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "/lol", nil)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
+	}
+
+	fil = NewPathFilter("/{s:str}")
+	req, err = http.NewRequest(http.MethodGet, "/Viktor", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "/$32", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
+	}
+
+	fil = NewPathFilter("/p/{name:str}/{age:int}")
+	req, err = http.NewRequest(http.MethodGet, "/p/Alex/42", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "/p/32/Alex", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
 	}
 }
