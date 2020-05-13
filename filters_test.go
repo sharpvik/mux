@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 )
@@ -82,4 +83,26 @@ func TestPathFilter(t *testing.T) {
 	if fil.Match(req) {
 		t.Error("the PathFilter matched an incorrect path")
 	}
+}
+
+func TestPathFilterVars(t *testing.T) {
+	rtr := New(&Cont{"lol"}).Path("/r/{article:str}/{id:int}")
+	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
+		vars, ok := Vars(r)
+		if !ok {
+			t.Error("the Vars function failed to retreive path variables")
+		}
+		article := vars["article"]
+		id := vars["id"]
+		s := fmt.Sprintf("#%d - %s", id, article)
+		if s != "#42 - Computers" {
+			t.Errorf("got '%s'; expected '#42 - Computers'", s)
+		}
+	}
+
+	rec, req, err := request(http.MethodGet, "/r/Computers/42", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	rtr.ServeHTTP(rec, req)
 }

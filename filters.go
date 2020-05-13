@@ -74,7 +74,7 @@ type MethodsFilter struct {
 	//     )
 	//
 	//     func main() {
-	//         // Create new filter instance.
+	//         // Create new filter instance using a constant from "net/http".
 	//         filter := mux.NewMethodsFilter(http.MethodPost)
 	//
 	//         // Add method "GET" to filter's Methods.
@@ -105,34 +105,45 @@ func (fil *MethodsFilter) Match(r *http.Request) bool {
 type PathFilter struct {
 	// Path is a string that is used to decide whether given request matches
 	// the URLFilter. It always begins with a /forward-slash.
-	Path   string
-	Regexp *regexp.Regexp
-}
+	Path string
 
-// Supported Path variable types.
-const (
-	Int pathVarType = iota
-	Str
-)
+	// Regexp is a compiled regular expression that is created by the
+	// NewPathFilter function; it is going to be used to check if request path
+	// matches the PathFilter.
+	Regexp *regexp.Regexp
+
+	// hasVars is a boolean flag that tells us whether this PathFilter had path
+	// variables in its template path.
+	hasVars bool
+}
 
 // NewPathFilter returns pointer to a newly created PathFilter. It also ensures
 // that the first character in the uri is a forward-slash -- if it isn't there,
 // it will be inserted.
 func NewPathFilter(path string) *PathFilter {
+	// Create a dummy PathFilter.
+	fil := &PathFilter{"", nil, false}
+
+	// Ensure that the leading slash is present in the path.
 	if []byte(path)[0] != '/' {
 		path = "/" + path
 	}
+	fil.Path = path
+
+	// Split path template by "/" and build an appropriate regular expression.
 	split := strings.Split(path, "/")[1:]
 	var exp string
 
 	for _, e := range split {
 		if isVar(e) {
+			fil.hasVars = true
+
 			_, typ := varData(e)
 			sub := "/"
 			switch typ {
-			case Int:
+			case pint:
 				sub = sub + `(-?[1-9]\d*|0)`
-			case Str:
+			case pstr:
 				sub = sub + `[a-zA-Z_]+`
 			}
 			exp = exp + sub
@@ -140,11 +151,15 @@ func NewPathFilter(path string) *PathFilter {
 			exp = exp + "/" + e
 		}
 	}
+
+	// Try to compile generated regular expression. Panic if that fails.
 	regex, err := regexp.Compile(exp)
 	if err != nil {
 		panic(fmt.Sprintf("can't compile regex %s: %v", exp, err))
 	}
-	return &PathFilter{path, regex}
+	fil.Regexp = regex
+
+	return fil
 }
 
 // Match method returns boolean value that tells you whether given request

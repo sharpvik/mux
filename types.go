@@ -53,3 +53,16 @@ type View func(http.ResponseWriter, *http.Request, Context)
 
 // pathVarType is an alias for int that we use as a custom type for path vars.
 type pathVarType int
+
+// Supported Path variable types.
+const (
+	pint pathVarType = iota
+	pstr
+)
+
+// contextKey is an alias for int that we use as a custom type for request
+// context key.
+type contextKey int
+
+// varsKey is a context key for request variables.
+const varsKey contextKey = iota
