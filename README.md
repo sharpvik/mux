@@ -48,32 +48,39 @@ type Context struct {
 	message string
 }
 
+// Make NewContext return a *reference* -- it's more memory efficient.
+func NewContext(l *log.Logger, m string) *Context {
+	return &Context{l, m}
+}
+
 func main() {
 	// Initialize new Router.
-	rtr := mux.RootRouter(Context{
-		log.New(os.Stdout, "", log.Ltime),
+	rtr := mux.New(NewContext(
+		log.New(os.Stdout, "🚀", log.Ltime),
 		"Cheer up, life's beautiful :)",
-	})
+	))
 
-	// Set router's View.
-	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx router.Context) {
-		// Type assertion is required here to retrieve stuff from ctx.
-		context := ctx.(Context)
+	// Set router's View to homeView.
+	rtr.View = homeView
 
-		// Fetch logger and message from context. Remember, depending on your
-		// definition of the Context type, you may have other things there.
-		lgr := context.logger
-		msg := context.message
+	http.ListenAndServe(":5000", rtr)
+}
 
-		// Log some things.
-		lgr.Printf("Request: %s", r.URL.String())
-		lgr.Printf("Response: %s", msg)
+func homeView(w http.ResponseWriter, r *http.Request, ctx mux.Context) {
+	// Type assertion is required here to retrieve stuff from ctx.
+	context := ctx.(*Context)
 
-		// Write response to the client.
-		fmt.Fprintf(w, msg)
-	}
+	// Fetch logger and message from context. Remember, depending on your
+	// definition of the Context type, you may have other things there.
+	lgr := context.logger
+	msg := context.message
 
-	http.ListenAndServe(":5050", rtr)
+	// Log some things.
+	lgr.Printf("Request: %s", r.URL.String())
+	lgr.Printf("Response: %s", msg)
+
+	// Write response to the client.
+	fmt.Fprintf(w, msg)
 }
 ```
 
