@@ -11,7 +11,7 @@ func isVar(pattern string) bool {
 	return regex.MatchString(pattern)
 }
 
-func varData(pattern string) (name string, typ int) {
+func varData(pattern string) (name string, typ pathVarType) {
 	trim := string([]rune(pattern)[1:strings.IndexRune(pattern, '}')])
 	split := strings.Split(trim, ":")
 	name = split[0]

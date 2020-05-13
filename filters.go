@@ -19,7 +19,7 @@ type Filter interface {
 // Router instance.
 type Filters struct {
 	Methods *MethodsFilter // e.g. "GET", "POST", "PUT", "DELETE", etc.
-	Path    *PathFilter    // e.g. "/public", "/api"
+	Path    *PathFilter    // e.g. "/home", "/r/{sub:str}/{id:int}"
 }
 
 // NewFilters returns pointer to an empty set of filters.
@@ -109,9 +109,9 @@ type PathFilter struct {
 	Regexp *regexp.Regexp
 }
 
-// These are all supported Path variable types.
+// Supported Path variable types.
 const (
-	Int = iota
+	Int pathVarType = iota
 	Str
 )
 
@@ -133,7 +133,7 @@ func NewPathFilter(path string) *PathFilter {
 			case Int:
 				sub = sub + `(-?[1-9]\d*|0)`
 			case Str:
-				sub = sub + `[a-zA-Z]+`
+				sub = sub + `[a-zA-Z_]+`
 			}
 			exp = exp + sub
 		} else {
