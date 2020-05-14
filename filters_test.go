@@ -115,6 +115,22 @@ func TestPathFilter(t *testing.T) {
 	if fil.Match(req) {
 		t.Error("the PathFilter matched an incorrect path")
 	}
+	//-------------------- Another Test Case --------------------
+	fil = NewPathFilter(`/pub/fail/{file:\d{3}\.html}`)
+	req, err = http.NewRequest(http.MethodGet, "/pub/fail/404.html", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "/pub/fail/a404.html", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
+	}
 }
 
 func TestPathFilterVars(t *testing.T) {
@@ -133,6 +149,26 @@ func TestPathFilterVars(t *testing.T) {
 	}
 
 	rec, req, err := request(http.MethodGet, "/r/Computers/42", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	rtr.ServeHTTP(rec, req)
+	//-------------------- Another Test Case --------------------
+	rtr.Path(`/r/{article:str}/{id:\w\d}`)
+	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
+		vars, ok := Vars(r)
+		if !ok {
+			t.Error("the Vars function failed to retreive path variables")
+		}
+		article := vars["article"]
+		id := vars["id"]
+		s := fmt.Sprintf("%s @ %s", id, article)
+		if s != "a2 @ Computers" {
+			t.Errorf("got '%s'; expected 'a2 @ Computers'", s)
+		}
+	}
+
+	rec, req, err = request(http.MethodGet, "/r/Computers/a2", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}

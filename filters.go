@@ -141,13 +141,19 @@ func NewPathFilter(path string) *PathFilter {
 			_, typ := varData(e)
 			sub := "/"
 			switch typ {
-			case pint:
+			case "int":
 				sub = sub + `(-?[1-9]\d*|0)`
-			case pstr:
+
+			case "str":
 				sub = sub + `[a-zA-Z_]+`
-			case pnat:
+
+			case "nat":
 				sub = sub + `([1-9]\d*|0)`
+
+			default: // regex type
+				sub = sub + typ
 			}
+
 			exp = exp + sub
 		} else {
 			exp = exp + "/" + e
