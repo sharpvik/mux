@@ -99,6 +99,22 @@ func TestPathFilter(t *testing.T) {
 	if fil.Match(req) {
 		t.Error("the PathFilter matched an incorrect path")
 	}
+	//-------------------- Another Test Case --------------------
+	fil = NewPathFilter("/pub/.*")
+	req, err = http.NewRequest(http.MethodGet, "/pub/lisn/index.html", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the PathFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "/p/-32", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the PathFilter matched an incorrect path")
+	}
 }
 
 func TestPathFilterVars(t *testing.T) {
@@ -117,6 +133,22 @@ func TestPathFilterVars(t *testing.T) {
 	}
 
 	rec, req, err := request(http.MethodGet, "/r/Computers/42", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	rtr.ServeHTTP(rec, req)
+}
+
+func TestPathPrefix(t *testing.T) {
+	rtr := New(&Cont{"lol"}).Path("/pub/.*")
+	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
+		path := r.URL.Path
+		if path != "/pub/lisn/index.html" {
+			t.Errorf("got '%s'; expected '/pub/lisn/index.html'", path)
+		}
+	}
+
+	rec, req, err := request(http.MethodGet, "/pub/lisn/index.html", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}
