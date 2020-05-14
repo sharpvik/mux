@@ -67,6 +67,13 @@ func New(ctx Context) *Router {
 // http.Handler interface. It is invoked automatically by http.Server if you
 // assign Router in question as server's Handler.
 func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Cut path prefix (if set) from the reuqest URL path.
+	if rtr.filters.PathPrefix != nil {
+		r.URL.Path = strings.TrimPrefix(
+			r.URL.Path, string(*rtr.filters.PathPrefix),
+		)
+	}
+
 	// Parse path variables and alter http.Request.Context.
 	r = rtr.vars(r)
 
@@ -100,15 +107,34 @@ func (rtr *Router) Subrouter() *Router {
 	return sub
 }
 
-// Methods returns pointer to the same rtr instance while altering its filters.
+// Methods returns pointer to the same rtr instance while altering its methods
+// filter.
+//
+// NOTICE: If methods filter has already been set for this Router instance, it
+// will get replaced!
 func (rtr *Router) Methods(methods ...string) *Router {
 	rtr.filters.Methods = NewMethodsFilter(methods...)
 	return rtr
 }
 
-// Path returns pointer to the same rtr instance while altering its filters.
+// Path returns pointer to the same rtr instance while altering its path filter.
+//
+// NOTICE: This method replaces router's PathFilter with a newly created
+// instance while setting PathPrefix to nil.
 func (rtr *Router) Path(path string) *Router {
 	rtr.filters.Path = NewPathFilter(path)
+	rtr.filters.PathPrefix = nil
+	return rtr
+}
+
+// PathPrefix returns pointer to the same rtr instance while altering its path
+// prefix filter.
+//
+// NOTICE: This method replaces router's PathPrefixFilter with a newly created
+// instance while setting PathFilter to nil.
+func (rtr *Router) PathPrefix(prefix string) *Router {
+	rtr.filters.PathPrefix = NewPathPrefixFilter(prefix)
+	rtr.filters.Path = nil
 	return rtr
 }
 
@@ -168,13 +194,18 @@ func (rtr *Router) vars(r *http.Request) *http.Request {
 		name, typ := varData(pat)
 
 		switch typ {
-		case pint:
+		case "int":
 			// Discarding the error here because we know for sure that exp
 			// passed regex test for number.
-			val, _ := strconv.Atoi(exp)
-			vars[name] = val
+			vars[name], _ = strconv.Atoi(exp)
 
-		case pstr:
+		case "nat":
+			vars[name], _ = strconv.ParseUint(exp, 10, 0)
+
+		case "str":
+			vars[name] = exp
+
+		default: // regex type
 			vars[name] = exp
 		}
 	}

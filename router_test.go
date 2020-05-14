@@ -46,7 +46,7 @@ func TestRootRouter(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
+	//-------------------- Another Test Case --------------------
 	// After setting the View.
 	root.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
 		fmt.Fprint(w, ctx.(Cont).msg)

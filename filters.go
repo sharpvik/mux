@@ -18,13 +18,14 @@ type Filter interface {
 // allowed on a Router. It ensures that only one filter of each type is used per
 // Router instance.
 type Filters struct {
-	Methods *MethodsFilter // e.g. "GET", "POST", "PUT", "DELETE", etc.
-	Path    *PathFilter    // e.g. "/home", "/r/{sub:str}/{id:int}"
+	Methods    MethodsFilter     // e.g. "GET", "POST", "PUT", "DELETE", etc.
+	Path       *PathFilter       // e.g. "/home", "/r/{sub:str}/{id:int}"
+	PathPrefix *PathPrefixFilter // e.g. "/api"
 }
 
 // NewFilters returns pointer to an empty set of filters.
 func NewFilters() *Filters {
-	return &Filters{nil, nil}
+	return &Filters{nil, nil, nil}
 }
 
 // Match method returns boolean value that tells you whether given request
@@ -57,43 +58,46 @@ func (fils *Filters) Match(r *http.Request) bool {
 }
 
 // MethodsFilter takes care of filtering requests by method (e.g. "POST").
-type MethodsFilter struct {
-	// Methods contains a slice of all accepted methods. If you would like to
-	// see all the ones that exist, go here:
-	//
-	//     https://golang.org/pkg/net/http/#pkg-constants
-	//
-	// It is advized that you use Go's standard "net/http" package in order to
-	// manage these. For example:
-	//
-	//     package main
-	//
-	//     import (
-	//         "net/http"
-	//         "github.com/sharpvik/mux"
-	//     )
-	//
-	//     func main() {
-	//         // Create new filter instance using a constant from "net/http".
-	//         filter := mux.NewMethodsFilter(http.MethodPost)
-	//
-	//         // Add method "GET" to filter's Methods.
-	//         filter.Methods = append(filter.Methods, http.MethodGet)
-	//     }
-	//
-	Methods []string
-}
+// It is an alias for a slice of strings that will hold all methods that this
+// Router may wish to process.
+//
+// If you would like to see all the request methods that exist, go here:
+//
+//     https://golang.org/pkg/net/http/#pkg-constants
+//
+// It is advized that you use Go's standard "net/http" package in order to
+// manage these. For example:
+//
+//     package main
+//
+//     import (
+//         "net/http"
+//         "github.com/sharpvik/mux"
+//     )
+//
+//     func main() {
+//         // Create new filter instance using a constant from "net/http".
+//         filter := mux.NewMethodsFilter(http.MethodPost)
+//
+//         // Add method "GET" to filter's Methods.
+//         filter.Methods = append(filter.Methods, http.MethodGet)
+//     }
+//
+type MethodsFilter []string
 
 // NewMethodsFilter function returns pointer to a custom MethodsFilter.
-func NewMethodsFilter(methods ...string) *MethodsFilter {
-	return &MethodsFilter{methods}
+//
+// NOTICE: We are not going to return a reference to MethodsFilter since its
+// underlying is a slice which is already a pointer in itself!
+func NewMethodsFilter(methods ...string) MethodsFilter {
+	return MethodsFilter(methods)
 }
 
 // Match method returns boolean value that tells you whether given request
 // passed the filter. Also, *MethodsFilter implements the Filter interface since
 // it has this method.
-func (fil *MethodsFilter) Match(r *http.Request) bool {
-	for _, m := range fil.Methods {
+func (fil MethodsFilter) Match(r *http.Request) bool {
+	for _, m := range fil {
 		if r.Method == m {
 			return true
 		}
@@ -103,8 +107,8 @@ func (fil *MethodsFilter) Match(r *http.Request) bool {
 
 // PathFilter takes care of filtering requests by their URL path (e.g. "/api").
 type PathFilter struct {
-	// Path is a string that is used to decide whether given request matches
-	// the URLFilter. It always begins with a /forward-slash.
+	// Path is a pattern string that is used to compose and compile a proper
+	// regual expression (Regexp) that will be used to match URL paths.
 	Path string
 
 	// Regexp is a compiled regular expression that is created by the
@@ -141,11 +145,19 @@ func NewPathFilter(path string) *PathFilter {
 			_, typ := varData(e)
 			sub := "/"
 			switch typ {
-			case pint:
+			case "int":
 				sub = sub + `(-?[1-9]\d*|0)`
-			case pstr:
+
+			case "str":
 				sub = sub + `[a-zA-Z_]+`
+
+			case "nat":
+				sub = sub + `([1-9]\d*|0)`
+
+			default: // regex type
+				sub = sub + typ
 			}
+
 			exp = exp + sub
 		} else {
 			exp = exp + "/" + e
@@ -167,4 +179,22 @@ func NewPathFilter(path string) *PathFilter {
 // it has this method.
 func (fil *PathFilter) Match(r *http.Request) bool {
 	return fil.Regexp.MatchString(r.URL.Path)
+}
+
+// PathPrefixFilter takes care of filtering requests by URL path prefix.
+// It is an alias to the standard string type. The string it wraps is the
+// aforementioned path prefix which we wish to utilize for route matching
+// purposes.
+type PathPrefixFilter string
+
+// NewPathPrefixFilter returns reference to a newly created PathPrefixFilter.
+func NewPathPrefixFilter(prefix string) *PathPrefixFilter {
+	fil := PathPrefixFilter(prefix)
+	return &fil
+}
+
+// Match method uses the string (that PathPrefixFilter wraps around) to decide
+// whether the request in question matches or not.
+func (fil *PathPrefixFilter) Match(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, string(*fil))
 }

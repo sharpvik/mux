@@ -51,15 +51,6 @@ type Context interface{}
 // is an empty interface in order to allow you to create your own context type.
 type View func(http.ResponseWriter, *http.Request, Context)
 
-// pathVarType is an alias for int that we use as a custom type for path vars.
-type pathVarType int
-
-// Supported Path variable types.
-const (
-	pint pathVarType = iota
-	pstr
-)
-
 // contextKey is an alias for int that we use as a custom type for request
 // context key.
 type contextKey int
