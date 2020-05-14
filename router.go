@@ -100,13 +100,20 @@ func (rtr *Router) Subrouter() *Router {
 	return sub
 }
 
-// Methods returns pointer to the same rtr instance while altering its filters.
+// Methods returns pointer to the same rtr instance while altering its methods
+// filter.
+//
+// NOTICE: If methods filter has already been set for this Router instance, it
+// will get replaced!
 func (rtr *Router) Methods(methods ...string) *Router {
 	rtr.filters.Methods = NewMethodsFilter(methods...)
 	return rtr
 }
 
-// Path returns pointer to the same rtr instance while altering its filters.
+// Path returns pointer to the same rtr instance while altering its path filter.
+//
+// NOTICE: If path filter has already been set for this Router instance, it will
+// get replaced!
 func (rtr *Router) Path(path string) *Router {
 	rtr.filters.Path = NewPathFilter(path)
 	return rtr
