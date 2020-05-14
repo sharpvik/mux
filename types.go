@@ -56,8 +56,9 @@ type pathVarType int
 
 // Supported Path variable types.
 const (
-	pint pathVarType = iota
-	pstr
+	pint pathVarType = iota // int
+	pstr                    // string
+	pnat                    // uint
 )
 
 // contextKey is an alias for int that we use as a custom type for request

@@ -21,7 +21,7 @@ func Vars(r *http.Request) (varsmap map[string]interface{}, ok bool) {
 // isVar tells you whether this path segment pattern was intended as a variable.
 // The pattern is either an arbitrary string or of "{varname:vartype}" form.
 func isVar(pattern string) bool {
-	regex := regexp.MustCompile(`\{\w+:(int|str)\}`)
+	regex := regexp.MustCompile(`\{\w+:.+\}`)
 	return regex.MatchString(pattern)
 }
 
@@ -38,6 +38,8 @@ func varData(pattern string) (name string, typ pathVarType) {
 		typ = pint
 	case "str":
 		typ = pstr
+	case "nat":
+		typ = pnat
 	default:
 		panic(fmt.Sprintf("invalid type in path %s", pattern))
 	}

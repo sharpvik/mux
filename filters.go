@@ -145,6 +145,8 @@ func NewPathFilter(path string) *PathFilter {
 				sub = sub + `(-?[1-9]\d*|0)`
 			case pstr:
 				sub = sub + `[a-zA-Z_]+`
+			case pnat:
+				sub = sub + `([1-9]\d*|0)`
 			}
 			exp = exp + sub
 		} else {

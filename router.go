@@ -171,8 +171,10 @@ func (rtr *Router) vars(r *http.Request) *http.Request {
 		case pint:
 			// Discarding the error here because we know for sure that exp
 			// passed regex test for number.
-			val, _ := strconv.Atoi(exp)
-			vars[name] = val
+			vars[name], _ = strconv.Atoi(exp)
+
+		case pnat:
+			vars[name], _ = strconv.ParseUint(exp, 10, 0)
 
 		case pstr:
 			vars[name] = exp
