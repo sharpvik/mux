@@ -176,17 +176,23 @@ func TestPathFilterVars(t *testing.T) {
 }
 
 func TestPathPrefix(t *testing.T) {
-	rtr := New(&Cont{"lol"}).Path("/pub/.*")
-	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		path := r.URL.Path
-		if path != "/pub/lisn/index.html" {
-			t.Errorf("got '%s'; expected '/pub/lisn/index.html'", path)
+	api := New(&Cont{"lol"}).PathPrefix("/api")
+	song := api.Subrouter().Path("/song/{id:int}")
+	song.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
+		vars, ok := Vars(r)
+		if !ok {
+			t.Errorf("the Vars function failed to retrieve variables")
+		}
+		id := vars["id"]
+		s := fmt.Sprintf("Song #%d", id)
+		if s != "Song #42" {
+			t.Errorf("got '%s'; expected 'Song #42'", s)
 		}
 	}
 
-	rec, req, err := request(http.MethodGet, "/pub/lisn/index.html", nil)
+	rec, req, err := request(http.MethodGet, "/api/song/42", nil)
 	if err != nil {
 		t.Fatalf("can't create request: %v", err)
 	}
-	rtr.ServeHTTP(rec, req)
+	api.ServeHTTP(rec, req)
 }

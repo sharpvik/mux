@@ -18,13 +18,14 @@ type Filter interface {
 // allowed on a Router. It ensures that only one filter of each type is used per
 // Router instance.
 type Filters struct {
-	Methods MethodsFilter // e.g. "GET", "POST", "PUT", "DELETE", etc.
-	Path    *PathFilter   // e.g. "/home", "/r/{sub:str}/{id:int}"
+	Methods    MethodsFilter     // e.g. "GET", "POST", "PUT", "DELETE", etc.
+	Path       *PathFilter       // e.g. "/home", "/r/{sub:str}/{id:int}"
+	PathPrefix *PathPrefixFilter // e.g. "/api"
 }
 
 // NewFilters returns pointer to an empty set of filters.
 func NewFilters() *Filters {
-	return &Filters{nil, nil}
+	return &Filters{nil, nil, nil}
 }
 
 // Match method returns boolean value that tells you whether given request
@@ -178,4 +179,22 @@ func NewPathFilter(path string) *PathFilter {
 // it has this method.
 func (fil *PathFilter) Match(r *http.Request) bool {
 	return fil.Regexp.MatchString(r.URL.Path)
+}
+
+// PathPrefixFilter takes care of filtering requests by URL path prefix.
+// It is an alias to the standard string type. The string it wraps is the
+// aforementioned path prefix which we wish to utilize for route matching
+// purposes.
+type PathPrefixFilter string
+
+// NewPathPrefixFilter returns reference to a newly created PathPrefixFilter.
+func NewPathPrefixFilter(prefix string) *PathPrefixFilter {
+	fil := PathPrefixFilter(prefix)
+	return &fil
+}
+
+// Match method uses the string (that PathPrefixFilter wraps around) to decide
+// whether the request in question matches or not.
+func (fil *PathPrefixFilter) Match(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, string(*fil))
 }

@@ -67,6 +67,13 @@ func New(ctx Context) *Router {
 // http.Handler interface. It is invoked automatically by http.Server if you
 // assign Router in question as server's Handler.
 func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Cut path prefix (if set) from the reuqest URL path.
+	if rtr.filters.PathPrefix != nil {
+		r.URL.Path = strings.TrimPrefix(
+			r.URL.Path, string(*rtr.filters.PathPrefix),
+		)
+	}
+
 	// Parse path variables and alter http.Request.Context.
 	r = rtr.vars(r)
 
@@ -112,10 +119,22 @@ func (rtr *Router) Methods(methods ...string) *Router {
 
 // Path returns pointer to the same rtr instance while altering its path filter.
 //
-// NOTICE: If path filter has already been set for this Router instance, it will
-// get replaced!
+// NOTICE: This method replaces router's PathFilter with a newly created
+// instance while setting PathPrefix to nil.
 func (rtr *Router) Path(path string) *Router {
 	rtr.filters.Path = NewPathFilter(path)
+	rtr.filters.PathPrefix = nil
+	return rtr
+}
+
+// PathPrefix returns pointer to the same rtr instance while altering its path
+// prefix filter.
+//
+// NOTICE: This method replaces router's PathPrefixFilter with a newly created
+// instance while setting PathFilter to nil.
+func (rtr *Router) PathPrefix(prefix string) *Router {
+	rtr.filters.PathPrefix = NewPathPrefixFilter(prefix)
+	rtr.filters.Path = nil
 	return rtr
 }
 
