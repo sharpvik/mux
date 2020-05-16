@@ -193,14 +193,15 @@ func (rtr *Router) vars(r *http.Request) *http.Request {
 
 		name, typ := varData(pat)
 
+		// Discarding all conversion errors in switch because we know
+		// for sure that exp passed regex test for number.
 		switch typ {
 		case "int":
-			// Discarding the error here because we know for sure that exp
-			// passed regex test for number.
 			vars[name], _ = strconv.Atoi(exp)
 
 		case "nat":
-			vars[name], _ = strconv.ParseUint(exp, 10, 0)
+			n, _ := strconv.ParseUint(exp, 10, 0)
+			vars[name] = uint(n)
 
 		case "str":
 			vars[name] = exp
