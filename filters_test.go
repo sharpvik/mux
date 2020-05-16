@@ -175,7 +175,7 @@ func TestPathFilterVars(t *testing.T) {
 	rtr.ServeHTTP(rec, req)
 }
 
-func TestPathPrefix(t *testing.T) {
+func TestPathPrefixFilter(t *testing.T) {
 	api := New(&Cont{"lol"}).PathPrefix("/api")
 	song := api.Subrouter().Path("/song/{id:int}")
 	song.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
@@ -195,4 +195,23 @@ func TestPathPrefix(t *testing.T) {
 		t.Fatalf("can't create request: %v", err)
 	}
 	api.ServeHTTP(rec, req)
+}
+
+func TestSchemes(t *testing.T) {
+	fil := NewSchemesFilter("http")
+
+	req, err := http.NewRequest(http.MethodGet, "http://foo.com/api", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if !fil.Match(req) {
+		t.Error("the SchemesFilter did not match a correct path")
+	}
+	req, err = http.NewRequest(http.MethodGet, "https://foo.com/api", nil)
+	if err != nil {
+		t.Fatalf("can't create request: %v", err)
+	}
+	if fil.Match(req) {
+		t.Error("the SchemesFilter matched an incorrect path")
+	}
 }

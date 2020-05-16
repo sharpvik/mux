@@ -18,14 +18,15 @@ type Filter interface {
 // allowed on a Router. It ensures that only one filter of each type is used per
 // Router instance.
 type Filters struct {
-	Methods    MethodsFilter     // e.g. "GET", "POST", "PUT", "DELETE", etc.
-	Path       *PathFilter       // e.g. "/home", "/r/{sub:str}/{id:int}"
-	PathPrefix *PathPrefixFilter // e.g. "/api"
+	Schema     *SchemesFilter    // e.g. "http" or "https".
+	Methods    *MethodsFilter    // e.g. "GET", "POST", "PUT", "DELETE", etc.
+	Path       *PathFilter       // e.g. "/home" or "/r/{sub:str}/{id:int}".
+	PathPrefix *PathPrefixFilter // e.g. "/api".
 }
 
 // NewFilters returns pointer to an empty set of filters.
 func NewFilters() *Filters {
-	return &Filters{nil, nil, nil}
+	return &Filters{nil, nil, nil, nil}
 }
 
 // Match method returns boolean value that tells you whether given request
@@ -58,8 +59,6 @@ func (fils *Filters) Match(r *http.Request) bool {
 }
 
 // MethodsFilter takes care of filtering requests by method (e.g. "POST").
-// It is an alias for a slice of strings that will hold all methods that this
-// Router may wish to process.
 //
 // If you would like to see all the request methods that exist, go here:
 //
@@ -80,29 +79,26 @@ func (fils *Filters) Match(r *http.Request) bool {
 //         filter := mux.NewMethodsFilter(http.MethodPost)
 //
 //         // Add method "GET" to filter's Methods.
-//         filter.Methods = append(filter.Methods, http.MethodGet)
+//         filter.Methods.Add(http.MethodGet)
 //     }
 //
-type MethodsFilter []string
+type MethodsFilter struct {
+	Methods set
+}
 
 // NewMethodsFilter function returns pointer to a custom MethodsFilter.
 //
 // NOTICE: We are not going to return a reference to MethodsFilter since its
-// underlying is a slice which is already a pointer in itself!
-func NewMethodsFilter(methods ...string) MethodsFilter {
-	return MethodsFilter(methods)
+// underlying type is a slice which is already a pointer in itself!
+func NewMethodsFilter(methods ...string) *MethodsFilter {
+	return &MethodsFilter{newSet(methods...)}
 }
 
 // Match method returns boolean value that tells you whether given request
 // passed the filter. Also, *MethodsFilter implements the Filter interface since
 // it has this method.
 func (fil MethodsFilter) Match(r *http.Request) bool {
-	for _, m := range fil {
-		if r.Method == m {
-			return true
-		}
-	}
-	return false
+	return fil.Methods.Has(r.Method)
 }
 
 // PathFilter takes care of filtering requests by their URL path (e.g. "/api").
@@ -197,4 +193,34 @@ func NewPathPrefixFilter(prefix string) *PathPrefixFilter {
 // whether the request in question matches or not.
 func (fil *PathPrefixFilter) Match(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, string(*fil))
+}
+
+// SchemesFilter takes care of filtering requests by scheme (e.g. "https").
+type SchemesFilter struct {
+	Schemes set
+}
+
+// NewSchemesFilter function returns pointer to a custom SchemesFilter.
+//
+// NOTICE: We are not going to return a reference to SchemesFilter since its
+// underlying type is a map which is already a pointer in itself!
+func NewSchemesFilter(schemes ...string) *SchemesFilter {
+	return &SchemesFilter{newSet(schemes...)}
+}
+
+// Match method returns boolean value that tells you whether given request
+// passed the filter. Also, *SchemesFilter implements the Filter interface since
+// it has this method.
+func (fil *SchemesFilter) Match(r *http.Request) bool {
+	scheme := r.URL.Scheme
+
+	if scheme == "" {
+		if r.TLS == nil {
+			scheme = "http"
+		} else {
+			scheme = "https"
+		}
+	}
+
+	return fil.Schemes.Has(scheme)
 }
