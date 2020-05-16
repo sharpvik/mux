@@ -138,6 +138,19 @@ func (rtr *Router) PathPrefix(prefix string) *Router {
 	return rtr
 }
 
+// Schemes returns pointer to the same rtr instance while altering its schemes
+// filter.
+//
+// NOTICE: This method replaces router's SchemesFilter with a newly created
+// instance.
+func (rtr *Router) Schemes(schemes ...string) *Router {
+	for i, s := range schemes {
+		schemes[i] = strings.ToLower(s)
+	}
+	rtr.filters.Schemes = NewSchemesFilter(schemes...)
+	return rtr
+}
+
 // Match method must go through all registered routes one by one and check if
 // their filters match the request. It returns the first sub-router where
 // filters matched and a boolean value indicating that there was a match.

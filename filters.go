@@ -18,7 +18,7 @@ type Filter interface {
 // allowed on a Router. It ensures that only one filter of each type is used per
 // Router instance.
 type Filters struct {
-	Schema     *SchemesFilter    // e.g. "http" or "https".
+	Schemes    *SchemesFilter    // e.g. "http" or "https".
 	Methods    *MethodsFilter    // e.g. "GET", "POST", "PUT", "DELETE", etc.
 	Path       *PathFilter       // e.g. "/home" or "/r/{sub:str}/{id:int}".
 	PathPrefix *PathPrefixFilter // e.g. "/api".
