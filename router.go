@@ -11,8 +11,8 @@ import (
 // Router represents the node of a routing tree.
 type Router struct {
 	// Context contains all of the things you'd like to be exposed to the View
-	// handler function. Its type is an empty interface so that you could
-	// declare your own custom context type and use it here.
+	// handler function. Context type is an alias to the empty interface so that
+	// you could declare your own custom context type and use it here.
 	Context Context
 
 	// Preview is a function of type View that is called whenever current
@@ -27,7 +27,7 @@ type Router struct {
 	// View is a handler function that is triggered if current request did not
 	// match any filters. It may hold an actual handler function, for example,
 	// if this Router instance is the leaf node of the routing tree.
-	// Alternatively, it may hold a fail handler function of your choice.
+	// Alternatively, it may hold a failure handler function of your choice.
 	View View
 
 	// Fail is a failure message written to http.ResponseWriter by the ServeHTTP
@@ -65,7 +65,9 @@ func New(ctx Context) *Router {
 
 // ServeHTTP method is here in order to ensure that Router implements the
 // http.Handler interface. It is invoked automatically by http.Server if you
-// assign Router in question as server's Handler.
+// assign Router in question as server's Handler. If this Router is not root,
+// but a sub-router instead, its ServeHTTP method will be invoked by the parent
+// Router whenever some request passes all its filters upon checkup.
 func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Cut path prefix (if set) from the reuqest URL path.
 	if rtr.filters.PathPrefix != nil {
@@ -96,7 +98,7 @@ func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Subrouter method returns pointer to a new sub-router instance that inherits
-// context from its parents.
+// context from its parent.
 func (rtr *Router) Subrouter() *Router {
 	// Create new Router that inherits its parent's Context.
 	sub := New(rtr.Context)
@@ -107,8 +109,8 @@ func (rtr *Router) Subrouter() *Router {
 	return sub
 }
 
-// Methods returns pointer to the same rtr instance while altering its methods
-// filter.
+// Methods returns pointer to the same Router instance while altering its
+// methods filter.
 //
 // NOTICE: If methods filter has already been set for this Router instance, it
 // will get replaced!
@@ -117,7 +119,8 @@ func (rtr *Router) Methods(methods ...string) *Router {
 	return rtr
 }
 
-// Path returns pointer to the same rtr instance while altering its path filter.
+// Path returns pointer to the same Router instance while altering its path
+// filter.
 //
 // NOTICE: This method replaces router's PathFilter with a newly created
 // instance while setting PathPrefix to nil.
@@ -127,8 +130,8 @@ func (rtr *Router) Path(path string) *Router {
 	return rtr
 }
 
-// PathPrefix returns pointer to the same rtr instance while altering its path
-// prefix filter.
+// PathPrefix returns pointer to the same Router instance while altering its
+// path prefix filter.
 //
 // NOTICE: This method replaces router's PathPrefixFilter with a newly created
 // instance while setting PathFilter to nil.
@@ -138,8 +141,8 @@ func (rtr *Router) PathPrefix(prefix string) *Router {
 	return rtr
 }
 
-// Schemes returns pointer to the same rtr instance while altering its schemes
-// filter.
+// Schemes returns pointer to the same Router instance while altering its
+// schemes filter.
 //
 // NOTICE: This method replaces router's SchemesFilter with a newly created
 // instance.

@@ -8,8 +8,7 @@ import (
 	"strings"
 )
 
-// Filter is an interface type that represents essential functionality of a
-// filter.
+// Filter is an interface type that represents functionality of a filter.
 type Filter interface {
 	Match(*http.Request) bool
 }
@@ -59,7 +58,6 @@ func (fils *Filters) Match(r *http.Request) bool {
 }
 
 // MethodsFilter takes care of filtering requests by method (e.g. "POST").
-//
 // If you would like to see all the request methods that exist, go here:
 //
 //     https://golang.org/pkg/net/http/#pkg-constants
@@ -87,9 +85,6 @@ type MethodsFilter struct {
 }
 
 // NewMethodsFilter function returns pointer to a custom MethodsFilter.
-//
-// NOTICE: We are not going to return a reference to MethodsFilter since its
-// underlying type is a slice which is already a pointer in itself!
 func NewMethodsFilter(methods ...string) *MethodsFilter {
 	return &MethodsFilter{newSet(methods...)}
 }
@@ -201,9 +196,6 @@ type SchemesFilter struct {
 }
 
 // NewSchemesFilter function returns pointer to a custom SchemesFilter.
-//
-// NOTICE: We are not going to return a reference to SchemesFilter since its
-// underlying type is a map which is already a pointer in itself!
 func NewSchemesFilter(schemes ...string) *SchemesFilter {
 	return &SchemesFilter{newSet(schemes...)}
 }
