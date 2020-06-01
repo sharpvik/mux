@@ -14,8 +14,7 @@ type Cont struct {
 }
 
 func TestRootRouter(t *testing.T) {
-	root := New(Cont{"laughing out loud"})
-	root.Fail = "lol fail"
+	root := New().Fail("lol fail")
 
 	// View function not set.
 	rec, req, err := request(http.MethodGet, "/", nil)
@@ -48,9 +47,11 @@ func TestRootRouter(t *testing.T) {
 	}
 	//-------------------- Another Test Case --------------------
 	// After setting the View.
-	root.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		fmt.Fprint(w, ctx.(Cont).msg)
-	}
+	root.HandleFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "laughing out loud")
+		},
+	)
 
 	rec, req, err = request(http.MethodGet, "/", nil)
 	if err != nil {

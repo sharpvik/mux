@@ -134,19 +134,20 @@ func TestPathFilter(t *testing.T) {
 }
 
 func TestPathFilterVars(t *testing.T) {
-	rtr := New(&Cont{"lol"}).Path("/r/{article:str}/{id:nat}")
-	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		vars, ok := Vars(r)
-		if !ok {
-			t.Error("the Vars function failed to retreive path variables")
-		}
-		article := vars["article"]
-		id := vars["id"]
-		s := fmt.Sprintf("#%d - %s", id, article)
-		if s != "#42 - Computers" {
-			t.Errorf("got '%s'; expected '#42 - Computers'", s)
-		}
-	}
+	rtr := New().Path("/r/{article:str}/{id:nat}").HandleFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			vars, ok := Vars(r)
+			if !ok {
+				t.Error("the Vars function failed to retreive path variables")
+			}
+			article := vars["article"]
+			id := vars["id"]
+			s := fmt.Sprintf("#%d - %s", id, article)
+			if s != "#42 - Computers" {
+				t.Errorf("got '%s'; expected '#42 - Computers'", s)
+			}
+		},
+	)
 
 	rec, req, err := request(http.MethodGet, "/r/Computers/42", nil)
 	if err != nil {
@@ -154,19 +155,20 @@ func TestPathFilterVars(t *testing.T) {
 	}
 	rtr.ServeHTTP(rec, req)
 	//-------------------- Another Test Case --------------------
-	rtr.Path(`/r/{article:str}/{id:\w\d}`)
-	rtr.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		vars, ok := Vars(r)
-		if !ok {
-			t.Error("the Vars function failed to retreive path variables")
-		}
-		article := vars["article"]
-		id := vars["id"]
-		s := fmt.Sprintf("%s @ %s", id, article)
-		if s != "a2 @ Computers" {
-			t.Errorf("got '%s'; expected 'a2 @ Computers'", s)
-		}
-	}
+	rtr.Path(`/r/{article:str}/{id:\w\d}`).HandleFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			vars, ok := Vars(r)
+			if !ok {
+				t.Error("the Vars function failed to retreive path variables")
+			}
+			article := vars["article"]
+			id := vars["id"]
+			s := fmt.Sprintf("%s @ %s", id, article)
+			if s != "a2 @ Computers" {
+				t.Errorf("got '%s'; expected 'a2 @ Computers'", s)
+			}
+		},
+	)
 
 	rec, req, err = request(http.MethodGet, "/r/Computers/a2", nil)
 	if err != nil {
@@ -176,19 +178,20 @@ func TestPathFilterVars(t *testing.T) {
 }
 
 func TestPathPrefixFilter(t *testing.T) {
-	api := New(&Cont{"lol"}).PathPrefix("/api")
-	song := api.Subrouter().Path("/song/{id:int}")
-	song.View = func(w http.ResponseWriter, r *http.Request, ctx Context) {
-		vars, ok := Vars(r)
-		if !ok {
-			t.Errorf("the Vars function failed to retrieve variables")
-		}
-		id := vars["id"]
-		s := fmt.Sprintf("Song #%d", id)
-		if s != "Song #42" {
-			t.Errorf("got '%s'; expected 'Song #42'", s)
-		}
-	}
+	api := New().PathPrefix("/api")
+	api.Subrouter().Path("/song/{id:int}").HandleFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			vars, ok := Vars(r)
+			if !ok {
+				t.Errorf("the Vars function failed to retrieve variables")
+			}
+			id := vars["id"]
+			s := fmt.Sprintf("Song #%d", id)
+			if s != "Song #42" {
+				t.Errorf("got '%s'; expected 'Song #42'", s)
+			}
+		},
+	)
 
 	rec, req, err := request(http.MethodGet, "/api/song/42", nil)
 	if err != nil {

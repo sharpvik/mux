@@ -10,25 +10,7 @@ import (
 
 // Router represents the node of a routing tree.
 type Router struct {
-	// Context contains all of the things you'd like to be exposed to the View
-	// handler function. Context type is an alias to the empty interface so that
-	// you could declare your own custom context type and use it here.
-	Context Context
-
-	// Preview is a function of type View that is called whenever current
-	// Router's ServeHTTP method is triggered unless that Router doesn't have a
-	// Preview. It is initially set to nil on Router creation, however, you can
-	// put here any function you wish to *always* be executed on ServeHTTP.
-	//
-	// NOTICE: Preview is executed even if current Router is not the final
-	// handler for this particular request.
-	Preview View
-
-	// View is a handler function that is triggered if current request did not
-	// match any filters. It may hold an actual handler function, for example,
-	// if this Router instance is the leaf node of the routing tree.
-	// Alternatively, it may hold a failure handler function of your choice.
-	View View
+	handler http.Handler
 
 	// Fail is a failure message written to http.ResponseWriter by the ServeHTTP
 	// method in case current request did not match any routes and the View
@@ -36,7 +18,7 @@ type Router struct {
 	//
 	// Initially its value is set to be DefaultFailMessage, but you can easily
 	// change it if you want.
-	Fail string
+	fail string
 
 	// routes is a slice of sub-routers.
 	routes []*Router
@@ -52,11 +34,9 @@ const DefaultFailMessage = "Handler node did not have a view assigned to it."
 // New is a constructor used to create the root of a routing tree. Root doesn't
 // need any filters as it is invoked automatically by the server anyway.
 // The routes will be added later, using Router's methods.
-func New(ctx Context) *Router {
+func New() *Router {
 	return &Router{
-		ctx,
-		nil, // Preview
-		nil, // View
+		nil, // handler
 		DefaultFailMessage,
 		nil, // routes
 		NewFilters(),
@@ -79,29 +59,42 @@ func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse path variables and alter http.Request.Context.
 	r = rtr.vars(r)
 
-	// Must call Preview if present.
-	if rtr.Preview != nil {
-		rtr.Preview(w, r, rtr.Context)
-	}
-
 	// 1. Check if there are routes with matching filters.
-	// 2. If not, call View if present.
-	// 3. If everything else failed, respond with a Fail message.
+	// 2. If not, use handler if present.
+	// 3. If everything else failed, respond with a fail message.
 	if sub, match := rtr.Match(r); match {
 		sub.ServeHTTP(w, r)
-	} else if rtr.View != nil {
-		rtr.View(w, r, rtr.Context)
+	} else if rtr.handler != nil {
+		rtr.handler.ServeHTTP(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
-		fmt.Fprint(w, rtr.Fail)
+		fmt.Fprint(w, rtr.fail)
 	}
+}
+
+// Handler method sets router's handler.
+func (rtr *Router) Handler(h http.Handler) *Router {
+	rtr.handler = h
+	return rtr
+}
+
+// HandleFunc method sets router's handler to a function.
+func (rtr *Router) HandleFunc(v View) *Router {
+	rtr.handler = v
+	return rtr
+}
+
+// Fail method sets router's fail message.
+func (rtr *Router) Fail(msg string) *Router {
+	rtr.fail = msg
+	return rtr
 }
 
 // Subrouter method returns pointer to a new sub-router instance that inherits
 // context from its parent.
 func (rtr *Router) Subrouter() *Router {
 	// Create new Router that inherits its parent's Context.
-	sub := New(rtr.Context)
+	sub := New()
 
 	// Add it to parent's routes.
 	rtr.routes = append(rtr.routes, sub)
