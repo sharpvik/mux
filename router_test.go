@@ -1,20 +1,22 @@
 package mux
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type Cont struct {
-	msg string
-}
-
 func TestRootRouter(t *testing.T) {
-	root := New().Fail("lol fail")
+	root := New().FailFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotImplemented)
+		fmt.Fprint(w, "lol fail")
+	})
 
 	// View function not set.
 	rec, req, err := request(http.MethodGet, "/", nil)
@@ -80,6 +82,30 @@ func TestRootRouter(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestRouterMiddleware(t *testing.T) {
+	rtr := New().
+		UseFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("middleware", "ok")
+		}).
+		HandleFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "middleware ok")
+		})
+	rec, req, err := request(http.MethodGet, "/", nil)
+	assert.NoError(t, err, "request failed:", err)
+	err = result(rtr, rec, req,
+		func(r *http.Response) (err error) {
+			if ok := r.Header.Get("middleware"); ok != "ok" {
+				return errors.New("middleware did not work")
+			}
+			var body []byte
+			if body, _ = ioutil.ReadAll(r.Body); string(body) != "middleware ok" {
+				return errors.New("handler was ignored after middleware application")
+			}
+			return
+		})
+	assert.NoError(t, err, "middleware failed:", err)
 }
 
 func request(method string, addr string, body io.Reader) (

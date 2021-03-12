@@ -2,7 +2,6 @@ package mux
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,7 +17,7 @@ type Router struct {
 	//
 	// Initially its value is set to be DefaultFailMessage, but you can easily
 	// change it if you want.
-	fail string
+	fail http.Handler
 
 	// routes is a slice of sub-routers.
 	routes []*Router
@@ -26,20 +25,26 @@ type Router struct {
 	// filters is a set of filters that are used to check whether this Router
 	// instance should be used for the request at hand.
 	filters *Filters
+
+	// middleware is just a list of handlers that are applied to the request
+	// before it is passed to the final Router's handler or a subroute.
+	middleware []http.Handler
 }
 
-// DefaultFailMessage is just a string with some dummy failure message.
-const DefaultFailMessage = "Handler node did not have a view assigned to it."
+// DefaultFailHandler is a default handler attached to every Router. Use
+// Router.Fail to specify a custom one.
+var DefaultFailHandler = http.NotFoundHandler()
 
 // New is a constructor used to create the root of a routing tree. Root doesn't
 // need any filters as it is invoked automatically by the server anyway.
 // The routes will be added later, using Router's methods.
 func New() *Router {
 	return &Router{
-		nil, // handler
-		DefaultFailMessage,
-		nil, // routes
-		NewFilters(),
+		handler:    nil,
+		fail:       DefaultFailHandler,
+		routes:     nil,
+		filters:    NewFilters(),
+		middleware: make([]http.Handler, 0),
 	}
 }
 
@@ -59,6 +64,11 @@ func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse path variables and alter http.Request.Context.
 	r = rtr.vars(r)
 
+	// Apply middleware.
+	for _, mw := range rtr.middleware {
+		mw.ServeHTTP(w, r)
+	}
+
 	// 1. Check if there are routes with matching filters.
 	// 2. If not, use handler if present.
 	// 3. If everything else failed, respond with a fail message.
@@ -67,9 +77,20 @@ func (rtr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if rtr.handler != nil {
 		rtr.handler.ServeHTTP(w, r)
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
-		fmt.Fprint(w, rtr.fail)
+		rtr.fail.ServeHTTP(w, r)
 	}
+}
+
+// Use registers a middleware handler on the Router.
+func (rtr *Router) Use(h http.Handler) *Router {
+	rtr.middleware = append(rtr.middleware, h)
+	return rtr
+}
+
+// Use registers a middleware View handler on the Router.
+func (rtr *Router) UseFunc(v View) *Router {
+	rtr.middleware = append(rtr.middleware, v)
+	return rtr
 }
 
 // Handler method sets router's handler.
@@ -85,8 +106,14 @@ func (rtr *Router) HandleFunc(v View) *Router {
 }
 
 // Fail method sets router's fail message.
-func (rtr *Router) Fail(msg string) *Router {
-	rtr.fail = msg
+func (rtr *Router) Fail(handler http.Handler) *Router {
+	rtr.fail = handler
+	return rtr
+}
+
+// FailFunc method sets router's fail message.
+func (rtr *Router) FailFunc(v View) *Router {
+	rtr.fail = v
 	return rtr
 }
 
